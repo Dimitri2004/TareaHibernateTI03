@@ -1,6 +1,8 @@
 package services;
 import config.HibernateConfigP;
+import model.Adestrador;
 import model.Pokedex;
+import model.Pokemon;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import java.math.BigDecimal;
@@ -47,18 +49,51 @@ public class PokedexService {
         }
     }
     public void eliminarPokedex(Long id) {
-        try (Session session = HibernateConfigP.getSessionFactory().openSession()) {
-            Transaction transaction = session.beginTransaction();
-            Pokedex pokedex = session.get(Pokedex.class, id);
-            if (pokedex != null) {
-                session.delete(pokedex);
+        Session session = null;
+        Transaction transaction = null;
+        try {
+            session = HibernateConfigP.getSessionFactory().openSession();
+            transaction = session.beginTransaction();
+
+            Pokedex p = session.find(Pokedex.class, id);
+            if (p != null) {
+                session.remove(p);
             } else {
-                System.out.println("non se atopou o gato");
+                System.out.println("No se encontró el pokedex con ID: " + id);
             }
+
             transaction.commit();
+
         } catch (Exception e) {
-            System.out.println("Non quero eliminar ningun gatiño Y.Y: " + e.getMessage());
+            if (transaction != null && transaction.isActive()) {
+                try {
+                    transaction.rollback();
+                } catch (IllegalStateException ignored) {}
+            }
+            e.printStackTrace();
+        } finally {
+            if (session != null) {
+                session.close();
+            }
         }
+    }
+
+    public Pokedex lerPokedexNomePokemon(String nome) {
+        Pokedex pokedex=null;
+        try (Session session = HibernateConfigP.getSessionFactory().openSession()) {
+            List<Pokedex> pokedexList = session.createQuery("from Pokedex where nome = :nome", Pokedex.class)
+                    .setParameter("nome", nome)
+                    .getResultList();
+            if (!pokedexList.isEmpty()) {
+                pokedex = pokedexList.get(0);  // Suponemos que el nombre y el dueño son únicos
+            } else {
+                System.out.println("Non se atopou o pokemon co nome " + nome);
+            }
+        } catch (Exception e) {
+            System.out.println("Erro ao ler o adestrador: " + e.getMessage());
+            return null;
+        }
+        return pokedex;
     }
     public List<Pokedex> pokedexList() {
         try (Session session = HibernateConfigP.getSessionFactory().openSession()) {
